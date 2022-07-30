@@ -1,7 +1,8 @@
 const {Builder, By} = require('selenium-webdriver');
 const firefox = require('selenium-webdriver/firefox');
+const fs = require('fs/promises');
 
-async function extractBNProperties() {
+async function extractProperties() {
   try {
     let options = new firefox.Options();
     let driver = await new Builder()
@@ -9,10 +10,19 @@ async function extractBNProperties() {
                 .forBrowser('firefox')
                 .build();
 
-    await driver.get('https://www.bnventadebienes.com/properties/search');
+    await driver.get("https://www.bnventadebienes.com/properties/search");
+
+    let maxPrice = await driver.findElement(By.xpath("//input[@id='MaxPrice']"));
+    maxPrice.sendKeys(20000000);
 
     let searchButton = await driver.findElement(By.xpath("//button[@class='btn btn-primary-action']"));
     await searchButton.click();
+
+    await fs.writeFile("BNPropiedades.txt", "BN Venta de Bienes", err => {
+      if (err) {
+        console.error(err);
+      }
+    });
 
     let link = await driver.findElement(By.linkText(">")).then(
       value => value.getAttribute("href")
@@ -35,11 +45,15 @@ async function extractBNProperties() {
       //Se extraen todos los elementos con la información de las propiedades
       infoItems = await driver.findElements(By.xpath("//div[@class='property-item-info col-xs-12 col-sm-12 col-md-12']"))
 
+      let content = "";
 
       for (let i = 0; i < infoItems.length; i++) {
         const item = infoItems[i];
         
         infoChildren = await item.findElements(By.xpath("./child::*"))
+
+        //Nueva línea para el nuevo hijo
+        content += "\n";
 
         for (let j = 0; j < infoChildren.length; j++) {
           const child = infoChildren[j];
@@ -47,13 +61,19 @@ async function extractBNProperties() {
           childClass = await child.getAttribute("class");
           childText = await child.getText();
 
-          console.log("Class: "+childClass+", Text: "+childText);
+          content += childText;
+          content += " >> "
+
+          console.log(content);
 
           if (childClass==="property-item-title") {
             
           }
         }
       }
+
+      //Extraídas las propiedades por página, escribimos al archivo
+      await fs.appendFile("BNPropiedades.txt", content);
 
     }
 
@@ -64,4 +84,4 @@ async function extractBNProperties() {
   }
 }
 
-extractBNProperties();
+extractProperties();
